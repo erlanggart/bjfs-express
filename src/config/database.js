@@ -25,14 +25,17 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 0,
 });
 
-// Test database connection
-pool.getConnection()
-  .then((connection) => {
+// Test database connection (non-blocking)
+setTimeout(async () => {
+  try {
+    const connection = await pool.getConnection();
     console.log('✅ Database connected successfully');
     connection.release();
-  })
-  .catch((error) => {
+  } catch (error) {
     console.error('❌ Database connection failed:', error.message);
-  });
+    console.error('⚠️  App will continue running but database operations will fail');
+    console.error('💡 Fix: Check environment variables or create .env file on server');
+  }
+}, 2000); // Test after 2 seconds to not block server startup
 
 export default pool;
