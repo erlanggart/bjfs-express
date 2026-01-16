@@ -39,8 +39,12 @@ app.use(cookieParser());
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // More lenient in dev
   message: 'Too many requests from this IP, please try again later.',
+  skip: (req) => {
+    // Skip rate limiting for auth check endpoint to prevent infinite loops
+    return req.path === '/api/auth/check-auth';
+  },
 });
 app.use('/api/', limiter);
 
