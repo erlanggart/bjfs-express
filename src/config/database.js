@@ -91,4 +91,3 @@ setTimeout(async () => {
 }, 2000); // Test after 2 seconds to not block server startup
 
 export default pool;
-export { getConnection };
