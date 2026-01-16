@@ -140,7 +140,39 @@ The database structure remains compatible with the existing MySQL database. No m
 
 ## Deployment
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for deployment instructions.
+### Quick Start
+For quick deployment to Hostinger, see [QUICK_DEPLOY.md](QUICK_DEPLOY.md)
+
+### Detailed Guide
+For comprehensive deployment instructions, see [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md)
+
+### Deployment Checklist
+Use [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) to ensure all steps are completed
+
+### Key Configuration for Production:
+
+1. **Database Connection** - Use Hostinger MySQL credentials:
+   ```bash
+   DB_HOST=mysql.hostinger.com
+   DB_USER=u123456_bjfs_user
+   DB_NAME=u123456_bogorjuniorfs
+   DB_PASSWORD=your_password
+   ```
+
+2. **JWT Secret** - Generate strong secret:
+   ```bash
+   ./scripts/generate-jwt-secret.sh
+   ```
+
+3. **CORS Origin** - Set to your frontend domain:
+   ```bash
+   CORS_ORIGIN=https://bogorjuniorfs.com
+   ```
+
+4. **Uploads Path** - Set absolute path on server:
+   ```bash
+   UPLOAD_PATH=/home/u123456/domains/api.bogorjuniorfs.com/public_html/uploads
+   ```
 
 ## License
 

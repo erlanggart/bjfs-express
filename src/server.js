@@ -22,6 +22,7 @@ import branchAdminRoutes from './routes/branch-admin.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
+import pool from './config/database.js';
 
 // Load environment variables
 dotenv.config();
@@ -61,6 +62,64 @@ app.use('/uploads', express.static('uploads'));
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Database connection test endpoint
+app.get('/db-test', async (req, res) => {
+  try {
+    // Test basic connection
+    const connection = await pool.getConnection();
+    
+    // Test query
+    const [rows] = await connection.query('SELECT 1 as test');
+    
+    // Get database info
+    const [dbInfo] = await connection.query('SELECT DATABASE() as current_db');
+    const [tableCount] = await connection.query(
+      'SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = DATABASE()'
+    );
+    
+    // Check if key tables exist
+    const [tables] = await connection.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = DATABASE() 
+      AND table_name IN ('users', 'members', 'branches', 'attendance', 'schedules')
+      ORDER BY table_name
+    `);
+    
+    connection.release();
+    
+    res.json({
+      status: 'Connected',
+      database: {
+        host: process.env.DB_HOST || 'not set',
+        name: dbInfo[0].current_db,
+        user: process.env.DB_USER || 'not set',
+        port: process.env.DB_PORT || 'not set',
+        tableCount: tableCount[0].table_count,
+        keyTables: tables.map(t => t.table_name),
+        missingTables: ['users', 'members', 'branches', 'attendance', 'schedules']
+          .filter(t => !tables.find(table => table.table_name === t))
+      },
+      test: rows[0].test === 1 ? 'PASS' : 'FAIL',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'Failed',
+      error: error.message,
+      code: error.code,
+      sqlState: error.sqlState,
+      config: {
+        host: process.env.DB_HOST || 'not set',
+        user: process.env.DB_USER || 'not set',
+        database: process.env.DB_NAME || 'not set',
+        port: process.env.DB_PORT || 'not set',
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // API routes
