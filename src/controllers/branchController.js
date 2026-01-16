@@ -4,17 +4,19 @@ export const getAllBranches = async (req, res, next) => {
   try {
     const [branches] = await db.query(`
       SELECT 
-        b.*,
-        COUNT(DISTINCT m.id) as total_members,
-        COUNT(DISTINCT ba.id) as total_admins
+        b.id,
+        b.name,
+        b.address,
+        COUNT(m.id) as total_members,
+        SUM(CASE WHEN m.status = 'active' THEN 1 ELSE 0 END) as active_members,
+        SUM(CASE WHEN m.status = 'inactive' THEN 1 ELSE 0 END) as inactive_members
       FROM branches b
-      LEFT JOIN members m ON b.id = m.branch_id AND m.status = 'active'
-      LEFT JOIN branch_admins ba ON b.id = ba.branch_id
-      GROUP BY b.id
-      ORDER BY b.branch_name ASC
+      LEFT JOIN members m ON b.id = m.branch_id
+      GROUP BY b.id, b.name, b.address
+      ORDER BY b.name ASC
     `);
 
-    res.json({ success: true, data: branches });
+    res.json(branches);
   } catch (error) {
     next(error);
   }
@@ -110,6 +112,102 @@ export const deleteBranch = async (req, res, next) => {
     }
 
     res.json({ success: true, message: 'Branch berhasil dihapus' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get branch detail with admins, schedules, and paginated members
+export const getBranchDetail = async (req, res, next) => {
+  try {
+    const branchId = req.query.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const offset = (page - 1) * limit;
+
+    if (!branchId) {
+      return res.status(400).json({ message: 'ID Cabang diperlukan.' });
+    }
+
+    const response = {};
+
+    // 1. Get branch info
+    const [branches] = await db.query('SELECT * FROM branches WHERE id = ?', [branchId]);
+    
+    if (branches.length === 0) {
+      return res.status(404).json({ message: 'Cabang tidak ditemukan.' });
+    }
+    
+    response.branch_info = branches[0];
+
+    // 2. Get branch admins
+    const [admins] = await db.query(`
+      SELECT u.id as user_id, ba.full_name, u.username 
+      FROM branch_admins ba 
+      JOIN users u ON ba.user_id = u.id 
+      WHERE ba.branch_id = ?
+    `, [branchId]);
+    response.admins = admins;
+
+    // 3. Get schedules
+    const [schedules] = await db.query(`
+      SELECT * FROM schedules 
+      WHERE branch_id = ? 
+      ORDER BY day_of_week, start_time
+    `, [branchId]);
+    response.schedules = schedules;
+
+    // 4. Get members with pagination and search
+    let memberParams = [branchId];
+    let searchQuery = '';
+    
+    if (search) {
+      searchQuery = ' AND (m.full_name LIKE ? OR m.id LIKE ?)';
+      const searchTerm = `%${search}%`;
+      memberParams.push(searchTerm, searchTerm);
+    }
+
+    // Count total members
+    const [countResult] = await db.query(
+      `SELECT COUNT(*) as total FROM members m WHERE m.branch_id = ?${searchQuery}`,
+      memberParams
+    );
+    const totalRecords = countResult[0].total;
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    // Get members data with pagination
+    const memberDataParams = [...memberParams, limit, offset];
+    const [members] = await db.query(`
+      SELECT 
+        m.id, 
+        m.full_name, 
+        m.status, 
+        m.avatar, 
+        u.username 
+      FROM members m 
+      LEFT JOIN users u ON m.user_id = u.id 
+      WHERE m.branch_id = ?${searchQuery}
+      ORDER BY m.full_name ASC 
+      LIMIT ? OFFSET ?
+    `, memberDataParams);
+
+    // Add full avatar URL
+    const membersWithUrls = members.map(member => ({
+      ...member,
+      avatar: member.avatar ? `${process.env.APP_URL}${member.avatar}` : null
+    }));
+
+    response.members = {
+      data: membersWithUrls,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages,
+        totalRecords: totalRecords
+      }
+    };
+
+    res.json(response);
   } catch (error) {
     next(error);
   }

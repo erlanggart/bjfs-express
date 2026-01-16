@@ -101,3 +101,78 @@ export const uploadDocument = multer({
   }),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for documents
 });
+
+export const uploadHero = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(__dirname, '../../uploads/hero'));
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '_' + Math.round(Math.random() * 1e9);
+      cb(null, `hero_${uniqueSuffix}${path.extname(file.originalname)}`);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPG, PNG, WEBP) are allowed for hero images'));
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB for hero images
+});
+
+export const uploadSignature = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(__dirname, '../../uploads/signatures'));
+    },
+    filename: (req, file, cb) => {
+      const userId = req.user?.id || 'unknown';
+      const timestamp = Date.now();
+      cb(null, `sig_${userId}_${timestamp}${path.extname(file.originalname)}`);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipe file tidak diizinkan. Hanya JPG atau PNG.'));
+    }
+  },
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB for signatures
+});
+
+export const uploadPaymentProof = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadPath = path.join(__dirname, '../../uploads/proofs');
+      cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+      const timestamp = Date.now();
+      const randomString = Math.round(Math.random() * 1e9);
+      cb(null, `proof_${timestamp}_${randomString}${path.extname(file.originalname)}`);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|pdf/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipe file tidak diizinkan. Hanya JPG, PNG, atau PDF.'));
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB for payment proofs
+});

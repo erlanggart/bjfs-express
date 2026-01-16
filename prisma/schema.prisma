@@ -1,0 +1,369 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model admin_attendance {
+  id              Int                     @id @default(autoincrement())
+  branch_admin_id String                  @db.Char(36)
+  schedule_id     String                  @db.Char(36)
+  attendance_date DateTime                @db.Date
+  status          admin_attendance_status
+  notes           String?                 @db.Text
+  created_at      DateTime?               @default(now()) @db.Timestamp(0)
+  updated_at      DateTime?               @default(now()) @db.Timestamp(0)
+  branch_admins   branch_admins           @relation(fields: [branch_admin_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "admin_attendance_ibfk_1")
+  schedules       schedules               @relation(fields: [schedule_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "admin_attendance_ibfk_2")
+
+  @@unique([branch_admin_id, schedule_id, attendance_date], map: "unique_admin_schedule_date")
+  @@index([branch_admin_id], map: "branch_admin_id")
+  @@index([created_at], map: "created_at")
+  @@index([schedule_id], map: "schedule_id")
+}
+
+model articles {
+  id            Int       @id @default(autoincrement())
+  title         String    @db.VarChar(255)
+  content       String    @db.Text
+  thumbnail_url String?   @db.VarChar(255)
+  author_id     String    @db.Char(36)
+  created_at    DateTime? @default(now()) @db.Timestamp(0)
+  updated_at    DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model attendance {
+  id                  BigInt            @id @default(autoincrement())
+  schedule_id         String            @db.Char(36)
+  member_id           String            @default("0") @db.VarChar(10)
+  recorded_by_user_id String            @db.Char(36)
+  attendance_date     DateTime          @db.Date
+  status              attendance_status
+  notes               String?           @db.Text
+  recorded_at         DateTime?         @default(now()) @db.Timestamp(0)
+  schedules           schedules         @relation(fields: [schedule_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "attendance_ibfk_1")
+  members             members           @relation(fields: [member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "attendance_ibfk_2")
+  users               users             @relation(fields: [recorded_by_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "attendance_ibfk_3")
+
+  @@unique([schedule_id, member_id, attendance_date], map: "unique_attendance")
+  @@index([member_id], map: "attendance_ibfk_2")
+  @@index([recorded_by_user_id], map: "recorded_by_user_id")
+}
+
+model branch_admin_competencies {
+  id                 Int           @id @default(autoincrement())
+  branch_admin_id    String        @db.Char(36)
+  competency_name    String        @db.VarChar(255)
+  issuer             String?       @db.VarChar(255)
+  date_obtained      DateTime?     @db.Date
+  certificate_number String?       @db.VarChar(100)
+  description        String?       @db.Text
+  created_at         DateTime?     @default(now()) @db.Timestamp(0)
+  updated_at         DateTime?     @default(now()) @db.Timestamp(0)
+  branch_admins      branch_admins @relation(fields: [branch_admin_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "branch_admin_competencies_ibfk_1")
+
+  @@index([branch_admin_id], map: "branch_admin_id")
+}
+
+model branch_admins {
+  id                        String                      @id @db.Char(36)
+  user_id                   String                      @db.Char(36)
+  branch_id                 String                      @db.Char(10)
+  full_name                 String                      @db.VarChar(255)
+  avatar                    String?                     @db.VarChar(255)
+  phone_number              String?                     @db.VarChar(20)
+  address                   String?                     @db.Text
+  signature                 String?                     @db.Text
+  admin_attendance          admin_attendance[]
+  branch_admin_competencies branch_admin_competencies[]
+  users                     users                       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "branch_admins_ibfk_1")
+  branches                  branches                    @relation(fields: [branch_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "branch_id_ibfk_1")
+
+  @@index([branch_id], map: "branch_id_ibfk_1")
+  @@index([user_id], map: "user_id")
+}
+
+model branches {
+  id              String                   @id @db.VarChar(10)
+  name            String                   @db.VarChar(255)
+  address         String?                  @db.Text
+  report_template branches_report_template @default(regular)
+  branch_admins   branch_admins[]
+  members         members[]
+  schedules       schedules[]
+}
+
+model feedback {
+  id                 Int             @id @default(autoincrement())
+  member_id          String          @db.VarChar(10)
+  content            String          @db.Text
+  status             feedback_status @default(unread)
+  submitted_at       DateTime?       @default(now()) @db.Timestamp(0)
+  reply_content      String?         @db.Text
+  replied_by_user_id String?         @db.Char(36)
+  replied_at         DateTime?       @db.Timestamp(0)
+  members            members         @relation(fields: [member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "feedback_ibfk_1")
+  users              users?          @relation(fields: [replied_by_user_id], references: [id], onUpdate: NoAction, map: "fk_replied_by")
+
+  @@index([replied_by_user_id], map: "fk_replied_by")
+  @@index([member_id], map: "member_id")
+}
+
+model hero_gallery {
+  id            String   @id @db.Char(36)
+  image_path    String   @db.VarChar(255)
+  display_order Int      @default(0)
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now()) @db.Timestamp(0)
+  updated_at    DateTime @default(now()) @db.Timestamp(0)
+}
+
+model login_logs {
+  id         Int      @id @default(autoincrement())
+  user_id    String   @db.Char(36)
+  login_time DateTime @default(now()) @db.DateTime(0)
+  ip_address String?  @db.VarChar(45)
+  user_agent String?  @db.Text
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "login_logs_ibfk_1")
+
+  @@index([login_time], map: "idx_login_time")
+  @@index([user_id], map: "idx_user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model match_lineups {
+  id             Int             @id @default(autoincrement())
+  match_id       Int
+  team_name      String          @db.VarChar(100)
+  member_id      String?         @db.VarChar(10)
+  player_name    String          @db.VarChar(255)
+  is_bjfs_player Boolean         @default(false)
+  created_at     DateTime?       @default(now()) @db.Timestamp(0)
+  matches        matches         @relation(fields: [match_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "match_lineups_ibfk_1")
+  members        members?        @relation(fields: [member_id], references: [id], onUpdate: NoAction, map: "match_lineups_ibfk_2")
+  match_scorers  match_scorers[]
+
+  @@index([match_id], map: "match_id")
+  @@index([member_id], map: "member_id")
+}
+
+model match_photos {
+  id          Int       @id @default(autoincrement())
+  match_id    Int
+  photo_url   String    @db.VarChar(255)
+  uploaded_at DateTime? @default(now()) @db.Timestamp(0)
+  matches     matches   @relation(fields: [match_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "match_photos_ibfk_1")
+
+  @@index([match_id], map: "match_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model match_scorers {
+  id            Int           @id @default(autoincrement())
+  match_id      Int
+  lineup_id     Int
+  goals_scored  Int           @default(1)
+  created_at    DateTime?     @default(now()) @db.Timestamp(0)
+  matches       matches       @relation(fields: [match_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "match_scorers_ibfk_1")
+  match_lineups match_lineups @relation(fields: [lineup_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "match_scorers_ibfk_2")
+
+  @@index([lineup_id], map: "lineup_id")
+  @@index([match_id], map: "match_id")
+}
+
+model matches {
+  id                 Int             @id @default(autoincrement())
+  event_name         String          @db.VarChar(255)
+  team_a_name        String          @db.VarChar(100)
+  team_b_name        String          @db.VarChar(100)
+  score_a            Int
+  score_b            Int
+  match_date         DateTime        @db.Date
+  created_by_user_id String          @db.Char(36)
+  created_at         DateTime?       @default(now()) @db.Timestamp(0)
+  match_lineups      match_lineups[]
+  match_photos       match_photos[]
+  match_scorers      match_scorers[]
+  users              users           @relation(fields: [created_by_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "matches_ibfk_1")
+
+  @@index([created_by_user_id], map: "created_by_user_id")
+}
+
+model member_achievements {
+  id               Int       @id @default(autoincrement())
+  member_id        String    @db.VarChar(10)
+  achievement_name String    @db.VarChar(255)
+  event_date       DateTime  @db.Date
+  notes            String?   @db.Text
+  created_at       DateTime? @default(now()) @db.Timestamp(0)
+  members          members   @relation(fields: [member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "member_achievements_ibfk_1")
+
+  @@index([member_id], map: "member_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model member_evaluations {
+  id              Int                            @id @default(autoincrement())
+  member_id       String                         @db.VarChar(10)
+  author_id       String                         @db.Char(36)
+  evaluation_date DateTime                       @db.Date
+  report_type     member_evaluations_report_type
+  scores          String                         @db.LongText
+  coach_notes     String?                        @db.Text
+  created_at      DateTime?                      @default(now()) @db.Timestamp(0)
+  members         members                        @relation(fields: [member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "member_evaluations_ibfk_1")
+  users           users                          @relation(fields: [author_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "member_evaluations_ibfk_2")
+
+  @@index([author_id], map: "author_id")
+  @@index([member_id], map: "member_id")
+}
+
+model members {
+  id                  String                @id @db.VarChar(10)
+  user_id             String                @db.Char(36)
+  branch_id           String                @db.Char(10)
+  full_name           String                @db.VarChar(255)
+  date_of_birth       DateTime?             @db.Date
+  status              members_status?       @default(active)
+  avatar              String?               @db.VarChar(255)
+  phone_number        String?               @db.VarChar(20)
+  kk_url              String?               @db.VarChar(255)
+  akte_url            String?               @db.VarChar(255)
+  biodata_url         String?               @db.VarChar(255)
+  last_payment_date   DateTime?             @db.Date
+  registration_date   DateTime              @default(now()) @db.Timestamp(0)
+  position            members_position      @default(Pemain)
+  address             String?               @db.Text
+  status_updated_at   DateTime?             @default(now()) @db.Timestamp(0)
+  attendance          attendance[]
+  feedback            feedback[]
+  match_lineups       match_lineups[]
+  member_achievements member_achievements[]
+  member_evaluations  member_evaluations[]
+  branches            branches              @relation(fields: [branch_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "branches_ibfk_1")
+  users               users                 @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "members_ibfk_1")
+  payment_proofs      payment_proofs[]
+
+  @@index([branch_id], map: "branches_ibfk_1")
+  @@index([user_id], map: "user_id")
+}
+
+model payment_proofs {
+  id            Int                   @id @default(autoincrement())
+  member_id     String                @db.VarChar(10)
+  payment_month Int
+  payment_year  Int
+  proof_url     String                @db.VarChar(255)
+  status        payment_proofs_status @default(pending)
+  verified_by   String?               @db.Char(36)
+  uploaded_at   DateTime?             @default(now()) @db.Timestamp(0)
+  members       members               @relation(fields: [member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payment_proofs_ibfk_1")
+  users         users?                @relation(fields: [verified_by], references: [id], onUpdate: NoAction, map: "payment_proofs_ibfk_2")
+
+  @@unique([member_id, payment_month, payment_year], map: "unique_payment_period")
+  @@index([verified_by], map: "verified_by")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model schedules {
+  id               String                @id @db.Char(36)
+  branch_id        String                @db.Char(10)
+  age_group        String                @db.VarChar(50)
+  day_of_week      schedules_day_of_week
+  start_time       DateTime              @db.Time(0)
+  end_time         DateTime              @db.Time(0)
+  location         String?               @db.VarChar(255)
+  created_at       DateTime?             @default(now()) @db.Timestamp(0)
+  min_age          Int?                  @db.UnsignedTinyInt
+  max_age          Int?                  @db.UnsignedTinyInt
+  is_active        Boolean?              @default(true)
+  admin_attendance admin_attendance[]
+  attendance       attendance[]
+  branches         branches              @relation(fields: [branch_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "schedules_ibfk_1")
+
+  @@index([is_active], map: "idx_schedules_is_active")
+  @@index([branch_id], map: "schedules_ibfk_1")
+}
+
+model users {
+  id                 String               @id @db.Char(36)
+  username           String               @unique(map: "username") @db.VarChar(100)
+  password           String               @db.Text
+  role               users_role
+  created_at         DateTime?            @default(now()) @db.Timestamp(0)
+  attendance         attendance[]
+  branch_admins      branch_admins[]
+  feedback           feedback[]
+  login_logs         login_logs[]
+  matches            matches[]
+  member_evaluations member_evaluations[]
+  members            members[]
+  payment_proofs     payment_proofs[]
+}
+
+enum branches_report_template {
+  regular
+  mastery
+}
+
+enum feedback_status {
+  unread
+  read
+  archived
+}
+
+enum schedules_day_of_week {
+  Senin
+  Selasa
+  Rabu
+  Kamis
+  Jumat
+  Sabtu
+  Minggu
+}
+
+enum users_role {
+  admin
+  admin_cabang
+  member
+}
+
+enum admin_attendance_status {
+  hadir
+  sakit
+  izin
+  alpa
+}
+
+enum member_evaluations_report_type {
+  regular_player
+  mastery_player
+  mastery_gk
+  regular_gk
+}
+
+enum attendance_status {
+  hadir
+  sakit
+  izin
+  alpa
+}
+
+enum members_status {
+  active
+  inactive
+}
+
+enum payment_proofs_status {
+  pending
+  approved
+  rejected
+}
+
+enum members_position {
+  Pemain
+  Kiper
+}

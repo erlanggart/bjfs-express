@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import db from '../config/database.js';
 import { generateToken } from '../utils/jwt.js';
 
@@ -17,7 +18,6 @@ export const login = async (req, res, next) => {
         u.username,
         u.password,
         u.role,
-        u.email,
         COALESCE(ba.full_name, m.full_name) as full_name,
         m.date_of_birth,
         ba.branch_id
@@ -34,8 +34,16 @@ export const login = async (req, res, next) => {
 
     const user = users[0];
 
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // Verify password - support both argon2 (old PHP) and bcrypt (new)
+    let isValidPassword = false;
+    if (user.password.startsWith('$argon2')) {
+      // Old PHP password using argon2
+      isValidPassword = await argon2.verify(user.password, password);
+    } else if (user.password.startsWith('$2')) {
+      // New bcrypt password
+      isValidPassword = await bcrypt.compare(password, user.password);
+    }
+    
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Username atau password salah' });
     }
@@ -60,7 +68,6 @@ export const login = async (req, res, next) => {
       id: user.id,
       role: user.role,
       username: user.username,
-      email: user.email,
       full_name: user.full_name || user.username,
     };
 
@@ -75,10 +82,18 @@ export const login = async (req, res, next) => {
     // Generate JWT token
     const token = generateToken(user.id, user.role);
 
+    // Set token as httpOnly cookie
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 2 * 60 * 60 * 1000 // 2 hours
+    });
+
     res.json({
       success: true,
       message: 'Login berhasil',
-      token,
+      token, // Still send in response for compatibility
       user: user_profile_data,
     });
   } catch (error) {
@@ -88,30 +103,30 @@ export const login = async (req, res, next) => {
 
 export const register = async (req, res, next) => {
   try {
-    const { username, email, password, role = 'member' } = req.body;
+    const { username, password, role = 'member' } = req.body;
 
     // Validate input
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: 'Semua field diperlukan' });
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username dan password diperlukan' });
     }
 
     // Check if user exists
     const [existingUsers] = await db.query(
-      'SELECT id FROM users WHERE username = ? OR email = ?',
-      [username, email]
+      'SELECT id FROM users WHERE username = ?',
+      [username]
     );
 
     if (existingUsers.length > 0) {
-      return res.status(409).json({ message: 'Username atau email sudah terdaftar' });
+      return res.status(409).json({ message: 'Username sudah terdaftar' });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password using argon2
+    const hashedPassword = await argon2.hash(password);
 
     // Insert user
     const [result] = await db.query(
-      'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-      [username, email, hashedPassword, role]
+      'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+      [username, hashedPassword, role]
     );
 
     res.status(201).json({
@@ -125,9 +140,63 @@ export const register = async (req, res, next) => {
 };
 
 export const logout = async (req, res) => {
-  // For JWT-based auth, logout is handled on the client side
-  // by removing the token from storage
+  // Clear auth cookie if using cookies
+  res.clearCookie('auth_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  });
+  
   res.json({ success: true, message: 'Logout berhasil' });
+};
+
+export const checkAuth = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const role = req.user.role;
+
+    // Get additional user data
+    let responseData = {
+      id: userId,
+      role: role
+    };
+
+    // If member, get additional info
+    if (role === 'member') {
+      const [members] = await db.query(`
+        SELECT full_name, date_of_birth
+        FROM members
+        WHERE user_id = ?
+      `, [userId]);
+
+      if (members.length > 0) {
+        responseData.full_name = members[0].full_name;
+        responseData.date_of_birth = members[0].date_of_birth;
+      }
+    }
+
+    // If branch admin, get branch_id
+    if (role === 'admin_cabang') {
+      const [admins] = await db.query(`
+        SELECT branch_id, full_name
+        FROM branch_admins
+        WHERE user_id = ?
+      `, [userId]);
+
+      if (admins.length > 0) {
+        responseData.branch_id = admins[0].branch_id;
+        responseData.full_name = admins[0].full_name;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Autentikasi berhasil',
+      user: responseData
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const getMe = async (req, res, next) => {
@@ -139,7 +208,6 @@ export const getMe = async (req, res, next) => {
       SELECT
         u.id,
         u.username,
-        u.email,
         u.role,
         COALESCE(ba.full_name, m.full_name) as full_name,
         m.date_of_birth,

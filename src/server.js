@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -14,6 +15,10 @@ import analyticsRoutes from './routes/analytics.js';
 import userRoutes from './routes/users.js';
 import feedbackRoutes from './routes/feedback.js';
 import publicRoutes from './routes/public.js';
+import adminRoutes from './routes/admin.js';
+import matchesRoutes from './routes/matches.js';
+import branchAdminsRoutes from './routes/branch_admins.js';
+import branchAdminRoutes from './routes/branch-admin.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -26,6 +31,9 @@ const PORT = process.env.PORT || 3000;
 
 // Security middleware
 app.use(helmet());
+
+// Cookie parser middleware
+app.use(cookieParser());
 
 // Rate limiting
 const limiter = rateLimit({
@@ -65,6 +73,10 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/matches', matchesRoutes);
+app.use('/api/branch_admins', branchAdminsRoutes);
+app.use('/api/branch-admin', branchAdminRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -6,3 +6,5 @@ config/google/*.json
 !config/google/.gitkeep
 *.log
 .DS_Store
+
+/src/generated/prisma
