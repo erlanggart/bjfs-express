@@ -22,7 +22,7 @@ import branchAdminRoutes from './routes/branch-admin.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
-import pool from './config/database.js';
+import pool, { getConnection } from './config/database.js';
 
 // Load environment variables
 dotenv.config();
@@ -67,8 +67,8 @@ app.get('/health', (req, res) => {
 // Database connection test endpoint
 app.get('/db-test', async (req, res) => {
   try {
-    // Test basic connection
-    const connection = await pool.getConnection();
+    // Test basic connection using circuit breaker
+    const connection = await getConnection();
     
     // Test query
     const [rows] = await connection.query('SELECT 1 as test');
@@ -106,6 +106,17 @@ app.get('/db-test', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
+    // Handle circuit breaker errors
+    if (error.message.includes('circuit breaker is OPEN')) {
+      return res.status(503).json({
+        status: 'Circuit Breaker Open',
+        error: error.message,
+        message: 'Too many database connection failures. System is protecting itself from resource exhaustion.',
+        retryAfter: 60,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     res.status(500).json({
       status: 'Failed',
       error: error.message,
@@ -145,11 +156,57 @@ app.use((req, res) => {
 // Global error handler
 app.use(errorHandler);
 
+// Uncaught Exception Handler - Mencegah crash tanpa handling
+process.on('uncaughtException', (error) => {
+  console.error('🚨 UNCAUGHT EXCEPTION - Application prevented from crashing:');
+  console.error('Error:', error.message);
+  console.error('Stack:', error.stack);
+  console.error('⚠️  This error was caught to prevent crash loop');
+  // Tidak exit process agar app tetap jalan
+});
+
+// Unhandled Promise Rejection Handler
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 UNHANDLED PROMISE REJECTION - Application prevented from crashing:');
+  console.error('Reason:', reason);
+  console.error('Promise:', promise);
+  console.error('⚠️  This rejection was caught to prevent crash loop');
+  // Tidak exit process agar app tetap jalan
+});
+
+// Graceful Shutdown Handler
+const gracefulShutdown = (signal) => {
+  console.log(`\n🛑 ${signal} received. Starting graceful shutdown...`);
+  
+  // Close server to stop accepting new connections
+  server.close(() => {
+    console.log('✅ HTTP server closed');
+    
+    // Close database connection pool
+    pool.end(() => {
+      console.log('✅ Database connections closed');
+      console.log('👋 Graceful shutdown completed');
+      process.exit(0);
+    });
+  });
+
+  // Force shutdown after 10 seconds jika graceful shutdown gagal
+  setTimeout(() => {
+    console.error('⚠️  Graceful shutdown timeout - forcing exit');
+    process.exit(1);
+  }, 10000);
+};
+
+// Listen for termination signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 API URL: http://localhost:${PORT}`);
+  console.log(`🛡️  Crash protection: ENABLED`);
 });
 
 export default app;
