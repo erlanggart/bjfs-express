@@ -33,7 +33,6 @@ router.get('/users', usersController.listUsers);
 router.post('/users', usersController.createUser);
 router.delete('/users', usersController.deleteUser);
 router.post('/remove-admin', usersController.removeAdmin);
-router.post('/remove_admin.php', usersController.removeAdmin); // PHP alias
 
 // ============ DASHBOARD ROUTES ============
 router.get('/dashboard-chart-data', dashboardController.getDashboardChartData);
@@ -41,6 +40,11 @@ router.get('/dashboard-member-count-chart', dashboardController.getMemberCountCh
 router.get('/dashboard-payment-data', dashboardController.getPaymentData);
 router.get('/login-stats-summary', dashboardController.getLoginStatsSummary);
 router.get('/user-login-stats', dashboardController.getUserLoginStats);
+router.get('/dashboard-activity-data', dashboardController.getDashboardActivityData);
+router.get('/dashboard-report-status', dashboardController.getDashboardReportStatus);
+
+// Legacy PHP-compatible routes (backward compatibility)
+router.post('/remove_admin.php', usersController.removeAdmin);
 router.get('/dashboard_activity_data.php', dashboardController.getDashboardActivityData);
 router.get('/dashboard_report_status.php', dashboardController.getDashboardReportStatus);
 

@@ -66,16 +66,39 @@ export const getSchedules = async (req, res) => {
 // Get articles list
 export const getArticles = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 3;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 9;
+    const search = req.query.search || '';
+    const offset = (page - 1) * limit;
     
-    const sql = `
+    let sql = `
       SELECT id, title, content, thumbnail_url, created_at 
       FROM articles
-      ORDER BY created_at DESC
-      LIMIT ?
+      WHERE 1=1
     `;
+    let countSql = 'SELECT COUNT(*) as total FROM articles WHERE 1=1';
+    const params = [];
+    const countParams = [];
     
-    const [articles] = await pool.query(sql, [limit]);
+    // Add search filter if provided
+    if (search) {
+      sql += ' AND title LIKE ?';
+      countSql += ' AND title LIKE ?';
+      const searchParam = `%${search}%`;
+      params.push(searchParam);
+      countParams.push(searchParam);
+    }
+    
+    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    
+    // Get total count for pagination
+    const [countResult] = await pool.query(countSql, countParams);
+    const total = countResult[0].total;
+    const total_pages = Math.ceil(total / limit);
+    
+    // Get articles
+    const [articles] = await pool.query(sql, params);
     
     // Process each article to create preview
     const processedArticles = articles.map(article => {
@@ -83,11 +106,16 @@ export const getArticles = async (req, res) => {
       return {
         ...article,
         content_preview: plainText.substring(0, 100) + '...',
-        content: undefined
+        content: article.content
       };
     });
     
-    res.json(processedArticles);
+    res.json({
+      articles: processedArticles,
+      total_pages,
+      current_page: page,
+      total
+    });
   } catch (error) {
     console.error('Error fetching articles:', error);
     res.status(500).json({ message: 'Gagal mengambil daftar artikel: ' + error.message });

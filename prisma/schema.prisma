@@ -258,6 +258,7 @@ model payment_proofs {
   payment_year  Int
   proof_url     String                @db.VarChar(255)
   status        payment_proofs_status @default(pending)
+  payment_type  String?               @default("full") @db.VarChar(50)
   verified_by   String?               @db.Char(36)
   uploaded_at   DateTime?             @default(now()) @db.Timestamp(0)
   members       members               @relation(fields: [member_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payment_proofs_ibfk_1")

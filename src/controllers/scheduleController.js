@@ -7,7 +7,7 @@ export const getAllSchedules = async (req, res, next) => {
     let query = `
       SELECT 
         s.*,
-        b.branch_name
+        b.name as branch_name
       FROM schedules s
       LEFT JOIN branches b ON s.branch_id = b.id
       WHERE 1=1
@@ -40,7 +40,7 @@ export const getScheduleById = async (req, res, next) => {
     const [schedules] = await db.query(`
       SELECT 
         s.*,
-        b.branch_name
+        b.name as branch_name
       FROM schedules s
       LEFT JOIN branches b ON s.branch_id = b.id
       WHERE s.id = ?
@@ -290,10 +290,10 @@ export const getTodaySchedules = async (req, res, next) => {
     const today = dayMap[new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Asia/Jakarta' })];
 
     const [schedules] = await db.query(
-      `SELECT id, age_group, start_time, end_time, location 
-       FROM schedules 
-       WHERE branch_id = ? AND day_of_week = ? AND is_active = 1 
-       ORDER BY start_time ASC`,
+      `SELECT s.id, s.age_group, s.start_time, s.end_time, s.location 
+       FROM schedules s
+       WHERE s.branch_id = ? AND s.day_of_week = ? AND s.is_active = 1 
+       ORDER BY s.start_time ASC`,
       [branchId, today]
     );
 

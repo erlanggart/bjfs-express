@@ -19,17 +19,23 @@ const router = express.Router();
 
 // Public routes
 router.get('/', getAllSchedules);
-router.get('/:id', getScheduleById);
 
 // Protected routes
 router.use(authenticate);
 
-// Legacy routes
-router.post('/', authorize('admin', 'admin_cabang'), createSchedule);
-router.put('/:id', authorize('admin', 'admin_cabang'), updateSchedule);
-router.delete('/:id', authorize('admin'), deleteSchedule);
+// Modern REST endpoints (recommended) - Specific routes BEFORE parameterized routes
+router.get('/today', authorize('admin_cabang'), getTodaySchedules);
+router.get('/list_by_branch', authorize('admin_cabang'), getSchedulesByBranch);
+router.get('/by_date', authorize('admin_cabang'), getSchedulesByDate);
+router.post('/create', authorize('admin_cabang'), createSchedulePHP);
+router.post('/update', authorize('admin_cabang'), updateSchedulePHP);
+router.delete('/delete', authorize('admin_cabang'), deleteSchedulePHP);
+router.post('/toggle_status', authorize('admin_cabang'), toggleScheduleStatus);
 
-// PHP-compatible routes (admin_cabang only)
+// Parameterized routes MUST come last
+router.get('/:id', getScheduleById);
+
+// Legacy PHP-compatible routes (backward compatibility)
 router.post('/create.php', authorize('admin_cabang'), createSchedulePHP);
 router.put('/update.php', authorize('admin_cabang'), updateSchedulePHP);
 router.delete('/delete.php', authorize('admin_cabang'), deleteSchedulePHP);

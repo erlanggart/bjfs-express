@@ -54,10 +54,12 @@ export const listFeedback = async (req, res, next) => {
   }
 };
 
-// POST /api/feedback/update_status.php - Update feedback status
+// PUT /api/feedback/:id/status - Update feedback status
 export const updateFeedbackStatus = async (req, res, next) => {
   try {
-    const { id, status } = req.body;
+    // Support both REST (:id param) and legacy (body.id)
+    const id = req.params.id || req.body.id;
+    const { status } = req.body;
 
     if (!id || !status) {
       return res.status(400).json({ message: 'ID feedback dan status baru diperlukan.' });
@@ -79,13 +81,15 @@ export const updateFeedbackStatus = async (req, res, next) => {
   }
 };
 
-// POST /api/feedback/reply.php - Reply to feedback
+// POST /api/feedback/:id/reply - Reply to feedback
 export const replyToFeedback = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { feedback_id, reply_content } = req.body;
+    // Support both REST (:id param) and legacy (body.feedback_id)
+    const feedbackId = req.params.id || req.body.feedback_id;
+    const { reply_content } = req.body;
 
-    if (!feedback_id || !reply_content || !reply_content.trim()) {
+    if (!feedbackId || !reply_content || !reply_content.trim()) {
       return res.status(400).json({ message: 'ID feedback dan isi balasan diperlukan.' });
     }
 
@@ -93,7 +97,7 @@ export const replyToFeedback = async (req, res, next) => {
       `UPDATE feedback 
        SET reply_content = ?, replied_by_user_id = ?, replied_at = NOW(), status = 'read' 
        WHERE id = ?`,
-      [reply_content, userId, feedback_id]
+      [reply_content, userId, feedbackId]
     );
 
     res.json({ message: 'Balasan berhasil dikirim.' });

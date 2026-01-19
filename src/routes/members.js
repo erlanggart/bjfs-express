@@ -40,7 +40,7 @@ router.get('/detail/:id', getMemberDetail);
 router.put('/update-profile', updateProfile); // Member updates own profile
 router.put('/update/:id', authorize('admin', 'admin_cabang'), updateMember);
 router.put('/toggle-status/:id', authorize('admin', 'admin_cabang'), toggleMemberStatus);
-router.post('/move-branch', authorize('admin', 'admin_cabang'), moveBranch);
+router.put('/move-branch/:id', authorize('admin', 'admin_cabang'), moveBranch);
 router.post('/reset-password/:id', authorize('admin', 'admin_cabang'), resetPassword);
 
 // ============ DOCUMENT ROUTES ============

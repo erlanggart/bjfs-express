@@ -25,7 +25,7 @@ export const getMyProfile = async (req, res, next) => {
       case 'admin_cabang': {
         const [admins] = await db.query(`
           SELECT ba.id, ba.user_id, u.username, ba.full_name, ba.avatar, 
-                 ba.phone_number, ba.address, ba.branch_id,
+                 ba.phone_number, ba.address, ba.branch_id, ba.signature,
                  b.name as branch_name 
           FROM branch_admins ba 
           JOIN branches b ON ba.branch_id = b.id 

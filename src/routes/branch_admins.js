@@ -15,7 +15,13 @@ const router = express.Router();
 router.use(authenticate);
 router.use(authorize('admin_cabang'));
 
-// Competency management routes
+// Modern REST endpoints (recommended)
+router.post('/competencies', addCompetency);
+router.put('/competencies/:id', updateCompetency);
+router.delete('/competencies/:id', deleteCompetency);
+router.get('/my-competencies', getMyCompetencies);
+
+// Legacy PHP-compatible routes (backward compatibility)
 router.post('/add_competency.php', addCompetency);
 router.put('/update_competency.php', updateCompetency);
 router.delete('/delete_competency.php', deleteCompetency);

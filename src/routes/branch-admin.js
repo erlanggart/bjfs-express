@@ -8,7 +8,11 @@ const router = express.Router();
 router.use(authenticate);
 router.use(authorize('admin_cabang'));
 
-// Branch admin routes (different path from branch_admins)
+// Modern REST endpoints (recommended)
+router.get('/members', listMembersInBranch);
+router.get('/export-members', exportMembers);
+
+// Legacy PHP-compatible routes (backward compatibility)
 router.get('/list_members.php', listMembersInBranch);
 router.get('/export_members.php', exportMembers);
 

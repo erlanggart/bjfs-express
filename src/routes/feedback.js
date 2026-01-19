@@ -8,7 +8,12 @@ const router = express.Router();
 router.use(authenticate);
 router.use(authorize('admin', 'admin_cabang'));
 
-// PHP-compatible routes
+// Modern REST endpoints (recommended)
+router.get('/', listFeedback);
+router.put('/:id/status', updateFeedbackStatus);
+router.post('/:id/reply', replyToFeedback);
+
+// Legacy PHP-compatible routes (backward compatibility)
 router.get('/list.php', listFeedback);
 router.post('/update_status.php', updateFeedbackStatus);
 router.post('/reply.php', replyToFeedback);

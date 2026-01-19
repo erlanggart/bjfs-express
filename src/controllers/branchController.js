@@ -212,3 +212,51 @@ export const getBranchDetail = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getBranchBirthdays = async (req, res, next) => {
+  try {
+    const { branch_id, month } = req.query;
+
+    if (!branch_id || !month) {
+      return res.status(400).json({ 
+        message: 'Parameter branch_id dan month harus disertakan' 
+      });
+    }
+
+    // Query untuk mendapatkan member yang berulang tahun di bulan tertentu
+    const [birthdays] = await db.query(`
+      SELECT 
+        m.id,
+        m.full_name,
+        m.avatar,
+        DATE_FORMAT(m.date_of_birth, '%Y-%m-%d') as date_of_birth,
+        DAY(m.date_of_birth) as birth_day,
+        MONTH(m.date_of_birth) as birth_month
+      FROM members m
+      WHERE m.branch_id = ?
+        AND MONTH(m.date_of_birth) = ?
+        AND m.date_of_birth IS NOT NULL
+        AND m.status = 'active'
+      ORDER BY DAY(m.date_of_birth)
+    `, [branch_id, month]);
+
+    // Group birthdays by day
+    const birthdaysByDay = {};
+    birthdays.forEach(member => {
+      const day = member.birth_day;
+      if (!birthdaysByDay[day]) {
+        birthdaysByDay[day] = [];
+      }
+      birthdaysByDay[day].push({
+        id: member.id,
+        full_name: member.full_name,
+        avatar: member.avatar ? `${process.env.APP_URL}${member.avatar}` : null,
+        date_of_birth: member.date_of_birth
+      });
+    });
+
+    res.json(birthdaysByDay);
+  } catch (error) {
+    next(error);
+  }
+};

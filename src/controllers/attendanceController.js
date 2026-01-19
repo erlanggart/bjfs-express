@@ -419,7 +419,7 @@ export const getMonthlySummary = async (req, res, next) => {
 
     const [sessions] = await db.query(
       `SELECT 
-        a.attendance_date,
+        DATE_FORMAT(a.attendance_date, '%Y-%m-%d') as attendance_date,
         s.id as schedule_id,
         s.age_group,
         s.start_time,

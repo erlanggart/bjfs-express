@@ -31,7 +31,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security middleware
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow static files to be loaded cross-origin
+  })
+);
 
 // Cookie parser middleware
 app.use(cookieParser());
@@ -60,8 +64,8 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files (uploads)
-app.use('/uploads', express.static('uploads'));
+// Serve static files (uploads) - dengan CORS headers
+app.use('/uploads', cors(corsOptions), express.static('uploads'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
